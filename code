@@ -1,0 +1,105 @@
+#include <Wire.h>
+#include <Adafruit_PWMServoDriver.h>
+
+// Create an instance of the PWM servo driver
+Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
+
+// Servo pulse parameters
+#define SERVOMIN  150  // Minimum pulse length count (approx. 0 degrees)
+#define SERVOMAX  600  // Maximum pulse length count (approx. 180 degrees)
+
+// Servo connections (update as per your wiring)
+#define FRONT_LEFT_HIP    5
+#define FRONT_LEFT_KNEE   3
+#define FRONT_LEFT_ANKLE  4
+
+#define FRONT_RIGHT_HIP   2
+#define FRONT_RIGHT_KNEE  0
+#define FRONT_RIGHT_ANKLE 1
+
+#define BACK_LEFT_HIP     11
+#define BACK_LEFT_KNEE    9
+#define BACK_LEFT_ANKLE   10
+
+#define BACK_RIGHT_HIP    8
+#define BACK_RIGHT_KNEE   6
+#define BACK_RIGHT_ANKLE  7
+
+// Initial angles for standing position (4 legs x 3 servos)
+int standingAngles[4][3] = {
+  {65, 115, 25},   // Front left (knee, ankle, hip)
+  {60, 60, 100},   // Front right (knee, ankle, hip)
+  {45, 45, 0},     // Back left (knee, ankle, hip)
+  {35, 115, -20}   // Back right (knee, ankle, hip)
+};
+
+// Function to convert degrees to PWM value
+int angleToPulse(int angle) {
+  return map(angle, 0, 180, SERVOMIN, SERVOMAX);
+}
+
+// Function to set servo angle
+void setServoAngle(int servo, int angle) {
+  pwm.setPWM(servo, 0, angleToPulse(angle));
+}
+
+// Function to move a leg forward
+void moveLegForward(int leg) {
+  int servoPins[4][3] = {
+    {FRONT_LEFT_KNEE, FRONT_LEFT_ANKLE, FRONT_LEFT_HIP},   // Front left leg
+    {FRONT_RIGHT_KNEE, FRONT_RIGHT_ANKLE, FRONT_RIGHT_HIP}, // Front right leg
+    {BACK_LEFT_KNEE, BACK_LEFT_ANKLE, BACK_LEFT_HIP},       // Back left leg
+    {BACK_RIGHT_KNEE, BACK_RIGHT_ANKLE, BACK_RIGHT_HIP}     // Back right leg
+  };
+
+  // Lift the leg (increase knee angle)
+  setServoAngle(servoPins[leg][0], standingAngles[leg][0] + 20); // Lift knee
+  delay(100);
+
+  // Move the leg forward (adjust hip angle)
+  setServoAngle(servoPins[leg][2], standingAngles[leg][2] + 15); // Move hip forward
+  delay(100);
+
+  // Lower the leg (restore knee angle)
+  setServoAngle(servoPins[leg][0], standingAngles[leg][0]); // Lower knee
+  delay(100);
+
+  // Move the hip back to the standing position
+  setServoAngle(servoPins[leg][2], standingAngles[leg][2]); // Restore hip
+  delay(100);
+}
+
+void setup() {
+  Serial.begin(9600);
+  Serial.println("Initializing PWM Servo Driver...");
+  pwm.begin();
+  pwm.setPWMFreq(50); // Set frequency to 50 Hz for servos
+  delay(500);
+
+  // Move all servos to their standing positions
+  int servoPins[4][3] = {
+    {FRONT_LEFT_KNEE, FRONT_LEFT_ANKLE, FRONT_LEFT_HIP},   // Front left leg
+    {FRONT_RIGHT_KNEE, FRONT_RIGHT_ANKLE, FRONT_RIGHT_HIP}, // Front right leg
+    {BACK_LEFT_KNEE, BACK_LEFT_ANKLE, BACK_LEFT_HIP},       // Back left leg
+    {BACK_RIGHT_KNEE, BACK_RIGHT_ANKLE, BACK_RIGHT_HIP}     // Back right leg
+  };
+
+  for (int leg = 0; leg < 4; leg++) {
+    for (int joint = 0; joint < 3; joint++) {
+      setServoAngle(servoPins[leg][joint], standingAngles[leg][joint]);
+    }
+  }
+
+  Serial.println("Quatbot is now in the standing position!");
+}
+
+void loop() {
+  // Move each leg forward in sequence
+  for (int leg = 0; leg < 4; leg++) {
+    moveLegForward(leg);
+    delay(200); // Delay between leg movements
+  }
+
+  // Optional: Add a delay to control the speed of the gait
+  delay(200);
+}
